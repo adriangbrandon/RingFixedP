@@ -105,7 +105,7 @@ namespace ring {
             m_cur_o = -1;
             m_i_p = m_ptr_ring->open_POS();
             //Interval in P
-            if (m_ptr_triple_pattern->term_p.value < m_ptr_ring->nP()) {
+            if (m_ptr_triple_pattern->term_p.value >= m_ptr_ring->nP()) {
                 m_is_empty = true;
                 return;
             }
