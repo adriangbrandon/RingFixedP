@@ -1,0 +1,10 @@
+/Applications/CLion.app/Contents/bin/cmake/mac/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /Users/adrian/RingFixedP
+-- Compiler is recent enough to support C++11.
+-- Performing Test HAVE_CLANG_FPERMISSIVE__STD=C__11
+-- Performing Test HAVE_CLANG_FPERMISSIVE__STD=C__11 - Success
+-- Performing Test HAVE_CLANG_STDLIB=LIBC__
+-- Performing Test HAVE_CLANG_STDLIB=LIBC__ - Success
+-- CPU does support SSE4.2.
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /Users/adrian/RingFixedP/cmake-build-debug
