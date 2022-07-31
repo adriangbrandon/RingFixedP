@@ -328,7 +328,7 @@ public:
         m_rank_A_s.set_vector(&m_A_s);
         m_select_A_s.load(in);
         m_select_A_s.set_vector(&m_A_s);
-
+        m_B_o.load(in);
         m_rank_B_o.load(in);
         m_rank_B_o.set_vector(&m_B_o);
         m_select_B_o.load(in);
