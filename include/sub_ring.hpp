@@ -20,12 +20,7 @@
 #define SUB_RING
 
 #include <cstdint>
-//#include "bwt.hpp"
-//#include "bwt_interval.hpp"
 #include <configuration.hpp>
-
-//#include <stdio.h>
-//#include <stdlib.h>
 #include <fstream>
 
 class sub_ring {
@@ -90,9 +85,9 @@ public:
 
 
     // Builds a subring from a vector of pairs
-    sub_ring(std::vector <std::pair<uint64_t, uint64_t>> &D, uint64_t U) {
-        std::vector <uint64_t> C_s, C_o;
-        std::vector <uint64_t> _A_s(U + 2, 0), _A_o(U + 2, 0);
+    sub_ring(std::vector<std::pair<uint64_t, uint64_t>> &D, uint64_t U) {
+        std::vector<uint64_t> C_s, C_o;
+        std::vector<uint64_t> _A_s(U + 2, 0), _A_o(U + 2, 0);
 
         sdsl::int_vector<> _F_s(D.size() + 2);
 
@@ -101,7 +96,7 @@ public:
         m_n_p = D.size();
         // First sort using the first component of the pairs
         sort(D.begin(), D.end(), [](const std::pair<uint64_t, uint64_t> &a,
-                const std::pair<uint64_t, uint64_t> &b) { return a.first < b.first; });
+                                    const std::pair<uint64_t, uint64_t> &b) { return a.first < b.first; });
         // Now build C_o.
         C_o.push_back(0); //dummy value
         for (uint64_t i = 0; i < D.size(); i++)
@@ -109,7 +104,7 @@ public:
 
         // Then, stable sort using the second component of the pairs
         stable_sort(D.begin(), D.end(), [](const std::pair<uint64_t, uint64_t> &a,
-                const std::pair<uint64_t, uint64_t> &b) { return a.second < b.second; });
+                                           const std::pair<uint64_t, uint64_t> &b) { return a.second < b.second; });
         // Now build C_s
         C_s.push_back(0); //dummy value
         for (uint64_t i = 0; i < D.size(); i++)
@@ -143,7 +138,7 @@ public:
         }
 
         // Luego, calcular m_F_s usando LF
-        std::vector <uint64_t> v_aux(U + 2, 0);
+        std::vector<uint64_t> v_aux(U + 2, 0);
         _F_s[0] = 0; // dummy value
         //cout << "m_F_s" << endl;
         for (uint64_t i = 1; i < C_s.size(); i++) {
