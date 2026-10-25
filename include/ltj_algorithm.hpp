@@ -258,9 +258,10 @@ namespace ring {
                 std::vector<ltj_iter_type*>& itrs = m_var_to_iterators[x_j];
                 bool ok;
                 if(itrs.size() == 1 && itrs[0]->in_last_level()) {//Lonely variables
-                    auto results = itrs[0]->seek_all(x_j);
-                    //std::cout << "Results: " << results.size() << std::endl;
-                    for (const auto &c : results) {
+                    // Enumerated lazily with leap (not with seek_all, which materializes every value of the
+                    // range and ignores the limit of results)
+                    value_type c = itrs[0]->leap(x_j);
+                    while (c != 0) {
                         //1. Adding result to tuple
                         tuple[j] = {x_j, c};
                         //2. Going down in the trie by setting x_j = c (\mu(t_i) in paper)
@@ -270,6 +271,7 @@ namespace ring {
                         if(!ok) return false;
                         //4. Going up in the trie by removing x_j = c
                         itrs[0]->up(x_j);
+                        c = itrs[0]->leap(x_j, c + 1);
                     }
                 }else {
                     value_type c = seek(x_j);
