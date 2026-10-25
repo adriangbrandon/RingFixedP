@@ -129,6 +129,9 @@ int main(int argc, char* argv[])
     //typedef ring::c_ring ring_type;
 
 
+    // Optional third argument: maximum number of results per query (0 = no limit)
+    uint64_t limit = (argc > 3) ? std::stoull(argv[3]) : 1000;
+
     vector<string> dummy_queries;
     bool result = get_file_content(argv[2], dummy_queries);
 
@@ -189,7 +192,7 @@ int main(int argc, char* argv[])
 
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-            ltj.join_opt(res, 1000, 600);
+            ltj.join_opt(res, limit, 600);
             //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
             stop = high_resolution_clock::now();
