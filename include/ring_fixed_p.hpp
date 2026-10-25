@@ -144,6 +144,15 @@ namespace ring {
             return m_p_rings.size();
         }
 
+        uint64_t universe(uint64_t p_value) {
+            return m_p_rings[p_value].universe();
+        }
+
+        // Number of triples in the positions of I_s (C_s) whose values lie in I_o (C_o)
+        uint64_t count_points(bwt_interval &I_s, bwt_interval &I_o) {
+            return m_p_rings[I_s.get_p_value()].count_points(I_s.left(), I_s.right(), I_o.left(), I_o.right());
+        }
+
 
         //! Serializes the data structure into the given ostream
         size_type serialize(std::ostream &out, sdsl::structure_tree_node *v = nullptr, std::string name = "") const {

@@ -387,6 +387,17 @@ public:
         return m_n_p;
     }
 
+    // Largest subject/object identifier (the universe size U used at construction)
+    inline uint64_t universe() const {
+        return m_B_s.size() - 2;
+    }
+
+    // Number of points (triples) in positions [s, e] of C_s and values [vs, ve] of m_F_s
+    inline uint64_t count_points(uint64_t s, uint64_t e, uint64_t vs, uint64_t ve) const {
+        if (s > e || vs > ve) return 0;
+        return m_F_s.count_range_search_2d(s, e, vs, ve);
+    }
+
 };
 
 #endif

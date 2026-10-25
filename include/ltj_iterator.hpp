@@ -45,6 +45,8 @@ namespace ring {
         bwt_interval m_i_s;
         bwt_interval m_i_p;
         bwt_interval m_i_o;
+        bwt_interval m_base_i_s; //m_i_s after resolving the constants (restored by up)
+        bwt_interval m_base_i_o; //m_i_o after resolving the constants (restored by up)
         value_type m_cur_s;
         value_type m_cur_p;
         value_type m_cur_o;
@@ -58,6 +60,8 @@ namespace ring {
             m_i_s = o.m_i_s;
             m_i_p = o.m_i_p;
             m_i_o = o.m_i_o;
+            m_base_i_s = o.m_base_i_s;
+            m_base_i_o = o.m_base_i_o;
             m_cur_s = o.m_cur_s;
             m_cur_p = o.m_cur_p;
             m_cur_o = o.m_cur_o;
@@ -101,7 +105,43 @@ namespace ring {
             }
             m_cur_p = m_ptr_triple_pattern->term_p.value;
             m_i_s = m_i_o = m_ptr_ring->down_P(m_ptr_triple_pattern->term_p.value);
-
+            if (m_i_s.size() == 0) {
+                m_is_empty = true;
+                return;
+            }
+            //Constant subject: restricts the interval of values (C_o)
+            if (!m_ptr_triple_pattern->term_s.is_variable) {
+                m_cur_s = m_ptr_triple_pattern->term_s.value;
+                if (m_cur_s > m_ptr_ring->universe(m_cur_p)) {
+                    m_is_empty = true;
+                    return;
+                }
+                m_i_o = m_ptr_ring->down_P_S(m_i_s, m_cur_s);
+                if (m_i_o.size() == 0) {
+                    m_is_empty = true;
+                    return;
+                }
+            }
+            //Constant object: restricts the interval of positions (C_s)
+            if (!m_ptr_triple_pattern->term_o.is_variable) {
+                m_cur_o = m_ptr_triple_pattern->term_o.value;
+                if (m_cur_o > m_ptr_ring->universe(m_cur_p)) {
+                    m_is_empty = true;
+                    return;
+                }
+                m_i_s = m_ptr_ring->down_P_O(m_i_o, m_cur_p, m_cur_o);
+                if (m_i_s.size() == 0) {
+                    m_is_empty = true;
+                    return;
+                }
+            }
+            //Both constants: the triple must exist
+            if (m_cur_s != -1 && m_cur_o != -1 && m_ptr_ring->count_points(m_i_s, m_i_o) == 0) {
+                m_is_empty = true;
+                return;
+            }
+            m_base_i_s = m_i_s;
+            m_base_i_o = m_i_o;
         }
 
         //! Copy constructor
@@ -130,6 +170,8 @@ namespace ring {
                 m_i_s = std::move(o.m_i_s);
                 m_i_p = std::move(o.m_i_p);
                 m_i_o = std::move(o.m_i_o);
+                m_base_i_s = std::move(o.m_base_i_s);
+                m_base_i_o = std::move(o.m_base_i_o);
                 m_cur_s = o.m_cur_s;
                 m_cur_p = o.m_cur_p;
                 m_cur_o = o.m_cur_o;
@@ -145,6 +187,8 @@ namespace ring {
             m_i_s.swap(o.m_i_s);
             m_i_o.swap(o.m_i_o);
             m_i_p.swap(o.m_i_p);
+            m_base_i_s.swap(o.m_base_i_s);
+            m_base_i_o.swap(o.m_base_i_o);
             std::swap(m_cur_s, o.m_cur_s);
             std::swap(m_cur_p, o.m_cur_p);
             std::swap(m_cur_o, o.m_cur_o);
@@ -181,11 +225,13 @@ namespace ring {
         void up(var_type var) { //Go up in the trie
             if (is_variable_subject(var)) {
                 m_cur_s = -1;
+                m_i_o = m_base_i_o;
 #if VERBOSE
                 std::cout << "Up in S" << std::endl;
 #endif
             }else if (is_variable_object(var)) {
                 m_cur_o = -1;
+                m_i_s = m_base_i_s;
 #if VERBOSE
                 std::cout << "Up in O" << std::endl;
 #endif
