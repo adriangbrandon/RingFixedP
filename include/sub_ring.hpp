@@ -85,132 +85,67 @@ public:
 
 
     // Builds a subring from a vector of pairs
+    // Builds a subring from a vector of (subject, object) pairs. Takes O(n_p log n_p) time: the arrays of size U of
+    // the first version (O(P*U) time overall) are replaced by the distinct subjects/objects (same index produced).
     sub_ring(std::vector<std::pair<uint64_t, uint64_t>> &D, uint64_t U) {
-        std::vector<uint64_t> C_s, C_o;
-        std::vector<uint64_t> _A_s(U + 2, 0), _A_o(U + 2, 0);
-
-        sdsl::int_vector<> _F_s(D.size() + 2);
-
         cout << D.size() << "  ";
         fflush(stdout);
         m_n_p = D.size();
         // First sort using the first component of the pairs
         sort(D.begin(), D.end(), [](const std::pair<uint64_t, uint64_t> &a,
                                     const std::pair<uint64_t, uint64_t> &b) { return a.first < b.first; });
-        // Now build C_o.
-        C_o.push_back(0); //dummy value
-        for (uint64_t i = 0; i < D.size(); i++)
-            C_o.push_back(D[i].second);
+        // Distinct subjects and the number of triples with a smaller subject (A_s)
+        std::vector<uint64_t> subjects, starts_s;
+        for (uint64_t i = 0; i < D.size(); i++) {
+            if (i == 0 || D[i].first != D[i - 1].first) {
+                subjects.push_back(D[i].first);
+                starts_s.push_back(i);
+            }
+        }
 
-        // Then, stable sort using the second component of the pairs
+        // Then, stable sort using the second component of the pairs: the order of C_s
         stable_sort(D.begin(), D.end(), [](const std::pair<uint64_t, uint64_t> &a,
                                            const std::pair<uint64_t, uint64_t> &b) { return a.second < b.second; });
-        // Now build C_s
-        C_s.push_back(0); //dummy value
-        for (uint64_t i = 0; i < D.size(); i++)
-            C_s.push_back(D[i].first);
-
-        // Now, compute arrays m_A_s and m_A_o
-        sdsl::bit_vector _B_s(U + 2, 0), _B_o(U + 2, 0);
-        for (uint64_t i = 0; i < D.size(); ++i) {
-            _A_s[D[i].first]++;
-            _B_s[D[i].first] = 1;
-            _A_o[D[i].second]++;
-            _B_o[D[i].second] = 1;
-        }
-        _B_s[U + 1] = 1;
-        _B_o[U + 1] = 1;
-
-        uint64_t t = 0, t_p;
-//            cout << "m_A_s" << endl;
-        for (uint64_t i = 1; i < U + 1; ++i) {
-            t_p = _A_s[i];
-            _A_s[i] = t;
-//                cout << _A_s[i] << endl;
-            t += t_p;
+        // Distinct objects and the number of triples with a smaller object (A_o)
+        std::vector<uint64_t> objects, starts_o;
+        for (uint64_t i = 0; i < D.size(); i++) {
+            if (i == 0 || D[i].second != D[i - 1].second) {
+                objects.push_back(D[i].second);
+                starts_o.push_back(i);
+            }
         }
 
-        t = 0;
-        for (uint64_t i = 1; i < U + 1; ++i) {
-            t_p = _A_o[i];
-            _A_o[i] = t;
-            t += t_p;
+        // F_s[i] = A_s[C_s[i]] + rank of C_s[i] in C_s[1..i] (LF)
+        sdsl::int_vector<> _F_s(D.size() + 2, 0);
+        {
+            std::vector<uint64_t> seen(subjects.size(), 0);
+            for (uint64_t i = 0; i < D.size(); i++) {
+                uint64_t j = std::lower_bound(subjects.begin(), subjects.end(), D[i].first) - subjects.begin();
+                _F_s[i + 1] = starts_s[j] + (++seen[j]);
+            }
         }
-
-        // Luego, calcular m_F_s usando LF
-        std::vector<uint64_t> v_aux(U + 2, 0);
-        _F_s[0] = 0; // dummy value
-        //cout << "m_F_s" << endl;
-        for (uint64_t i = 1; i < C_s.size(); i++) {
-            v_aux[C_s[i]]++;
-            _F_s[i] = _A_s[C_s[i]] + v_aux[C_s[i]];
-            //cout << " > m_F_s[" << i << "] = " << _m_F_s[i] << endl;
-        }
-        //cout << "*******" << endl;
-
-        // Luego construir la WM para m_F_s
         util::bit_compress(_F_s);
         construct_im(m_F_s, _F_s);
 
-//            cout << "U="<<U <<endl;
-//            cout << "n="<<D.size() << endl;
-        {
-            sdsl::bit_vector a(D.size() + 1, 0);
-
-            for (uint64_t i = 0; i < _A_s.size(); i++) {
-//                cout << i << " " << i+_A_s[i] << endl;
-                if (_B_s[i])
-                    a[_A_s[i]] = 1;
-            }
-            a[D.size()] = 1;
-/*
-                cout << "As" << endl;
-                for (uint64_t i = 0; i < a.size(); i++) {
-                    cout << a[i];
-                }
-                cout << endl; 
-                cout << "Bs" << endl;
-                for (uint64_t i = 0; i < m_B_s.size(); i++) {
-                    cout << m_B_s[i];
-                }
-                cout << endl;
-*/
-            m_A_s = sd_vector<>(a);
-            m_B_s = sd_vector<>(_B_s);
-            util::init_support(m_select_A_s, &m_A_s);
-            util::init_support(m_rank_A_s, &m_A_s);
-            util::init_support(m_select_B_s, &m_B_s);
-            util::init_support(m_rank_B_s, &m_B_s);
-        }
-
-        {
-            sdsl::bit_vector a(D.size() + 1, 0);
-
-            for (uint64_t i = 0; i < _A_o.size(); i++) {
-//                cout << i << " " << i+_A_s[i] << endl;
-                if (_B_o[i])
-                    a[_A_o[i]] = 1;
-            }
-            a[D.size()] = 1;
-/*
-                cout << "Ao" << endl;
-                for (uint64_t i = 0; i < a.size(); i++) {
-                    cout << a[i];
-                }
-                cout << endl;
-                cout << "Bo" << endl;
-                for (uint64_t i = 0; i < m_B_o.size(); i++) {
-                    cout << m_B_o[i];
-                }
-                cout << endl;
-*/
-            m_A_o = sd_vector<>(a);
-            m_B_o = sd_vector<>(_B_o);
-            util::init_support(m_rank_A_o, &m_A_o);
-            util::init_support(m_select_A_o, &m_A_o);
-            util::init_support(m_rank_B_o, &m_B_o);
-            util::init_support(m_select_B_o, &m_B_o);
-        }
+        // Bitvectors: B marks the identifiers that appear (plus U+1), A marks the starting positions (plus n)
+        auto build_sd = [](const std::vector<uint64_t> &ones, uint64_t last, uint64_t size) {
+            sdsl::sd_vector_builder builder(size, ones.size() + 1);
+            for (const auto &x : ones) builder.set(x);
+            builder.set(last);
+            return sdsl::sd_vector<>(builder);
+        };
+        m_B_s = build_sd(subjects, U + 1, U + 2);
+        m_A_s = build_sd(starts_s, D.size(), D.size() + 1);
+        m_B_o = build_sd(objects, U + 1, U + 2);
+        m_A_o = build_sd(starts_o, D.size(), D.size() + 1);
+        util::init_support(m_rank_B_s, &m_B_s);
+        util::init_support(m_select_B_s, &m_B_s);
+        util::init_support(m_rank_A_s, &m_A_s);
+        util::init_support(m_select_A_s, &m_A_s);
+        util::init_support(m_rank_B_o, &m_B_o);
+        util::init_support(m_select_B_o, &m_B_o);
+        util::init_support(m_rank_A_o, &m_A_o);
+        util::init_support(m_select_A_o, &m_A_o);
 
         cout << "-- Subring constructed successfully" << endl;
         fflush(stdout);
@@ -392,10 +327,113 @@ public:
         return m_B_s.size() - 2;
     }
 
+    // Number of positions in [s, e] of m_F_s whose value is in [vs, ve]. Equivalent to count_range_search_2d of
+    // adriangbrandon/sdsl-lite, written here with my_expand so that it also compiles with darroyue/sdsl-lite.
+    inline uint64_t count_2d(uint64_t s, uint64_t e, uint64_t vs, uint64_t ve) const {
+        typedef typename table_column_type::node_type node_type;
+        struct item_type {
+            node_type node;
+            sdsl::range_type range;
+            uint64_t ilb, irb; // interval of values of the node
+        };
+        uint64_t levels = m_F_s.max_level;
+        uint64_t max_value = (levels >= 64) ? -1ULL : (1ULL << levels) - 1;
+        if (ve > max_value) ve = max_value;
+        if (s > e || vs > ve) return 0;
+        uint64_t count = 0, rnk;
+        sdsl::range_type r_left, r_right;
+        std::vector<item_type> stack;
+        stack.push_back(item_type{m_F_s.root(), {s, e}, 0, max_value});
+        while (!stack.empty()) {
+            item_type x = stack.back();
+            stack.pop_back();
+            if (m_F_s.is_leaf(x.node) || (vs <= x.ilb && x.irb <= ve)) {
+                count += x.range[1] + 1 - x.range[0];
+            } else {
+                auto children = m_F_s.my_expand(x.node, x.range, r_left, r_right, rnk);
+                uint64_t mid = ((x.ilb + x.irb) >> 1) + 1;
+                if (r_left[1] + 1 > r_left[0] && vs < mid) {
+                    stack.push_back(item_type{children[0], r_left, x.ilb, mid - 1});
+                }
+                if (r_right[1] + 1 > r_right[0] && ve >= mid) {
+                    stack.push_back(item_type{children[1], r_right, mid, x.irb});
+                }
+            }
+        }
+        return count;
+    }
+
     // Number of points (triples) in positions [s, e] of C_s and values [vs, ve] of m_F_s
     inline uint64_t count_points(uint64_t s, uint64_t e, uint64_t vs, uint64_t ve) const {
         if (s > e || vs > ve) return 0;
-        return m_F_s.count_range_search_2d(s, e, vs, ve);
+        return count_2d(s, e, vs, ve);
+    }
+
+    /**********************************/
+    // Functions for the VEO estimators. Positions of C_s follow the object order and the values of m_F_s are
+    // positions in the subject order, so an interval of C_s is a range of positions and an interval of C_o is a
+    // range of values.
+
+    // Number of triples in positions [s, e] of C_s whose subject is smaller than v
+    inline uint64_t count_S_lt(uint64_t s, uint64_t e, uint64_t v) {
+        if (s > e) return 0;
+        uint64_t t = (v > universe()) ? m_n_p : get_As(v); // subjects < v are the values [1, t]
+        if (t == 0) return 0;
+        if (s == 1 && e == m_n_p) return t;
+        return count_2d(s, e, 1, t);
+    }
+
+    // Number of triples in values [s, e] of C_o whose object is smaller than v
+    inline uint64_t count_O_lt(uint64_t s, uint64_t e, uint64_t v) {
+        if (s > e) return 0;
+        uint64_t t = (v > universe()) ? m_n_p : get_Ao(v); // objects < v are the positions [1, t]
+        if (t == 0) return 0;
+        if (s == 1 && e == m_n_p) return t;
+        return count_2d(1, t, s, e);
+    }
+
+    // Subject of the q-th triple (0-based, in subject order) among positions [s, e] of C_s
+    inline uint64_t kth_S(uint64_t s, uint64_t e, uint64_t q) {
+        uint64_t t;
+        if (s == 1 && e == m_n_p) {
+            t = q + 1;
+        } else {
+            auto v = m_F_s.root();
+            sdsl::range_type r = {s, e}, r_left, r_right;
+            uint64_t rnk;
+            while (!m_F_s.is_leaf(v)) {
+                auto children = m_F_s.my_expand(v, r, r_left, r_right, rnk);
+                uint64_t n_left = r_left[1] + 1 - r_left[0];
+                if (q < n_left) {
+                    v = children[0];
+                    r = r_left;
+                } else {
+                    q -= n_left;
+                    v = children[1];
+                    r = r_right;
+                }
+            }
+            t = m_F_s.sym(v);
+        }
+        return m_select_B_s(m_rank_A_s(t));
+    }
+
+    // Object of the q-th triple (0-based, in object order) among values [s, e] of C_o
+    inline uint64_t kth_O(uint64_t s, uint64_t e, uint64_t q) {
+        uint64_t t;
+        if (s == 1 && e == m_n_p) {
+            t = q + 1;
+        } else {
+            // smallest position t such that [1, t] contains q+1 points with values in [s, e]
+            uint64_t lo = 1, hi = m_n_p;
+            while (lo < hi) {
+                uint64_t mid = (lo + hi) / 2;
+                if (count_2d(1, mid, s, e) > q) hi = mid;
+                else lo = mid + 1;
+            }
+            t = lo;
+        }
+        return m_select_B_o(m_rank_A_o(t));
     }
 
 };

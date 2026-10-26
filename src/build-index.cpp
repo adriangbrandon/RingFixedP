@@ -35,7 +35,12 @@ int main(int argc, char **argv)
     memory_monitor::stop();
     cout << "  Index built  " << sdsl::size_in_bytes(A) << " bytes" << endl;
 
-    std::string index_name = std::string(argv[1]) + ".ring";
+    // Optional second argument: output file (default: <dataset>.ring, or <dataset>.ring-plain)
+#ifdef RING_PLAIN_BV
+    std::string index_name = (argc > 2) ? std::string(argv[2]) : std::string(argv[1]) + ".ring-plain";
+#else
+    std::string index_name = (argc > 2) ? std::string(argv[2]) : std::string(argv[1]) + ".ring";
+#endif
     sdsl::store_to_file(A, index_name);
     cout << "Index saved" << endl;
     cout << duration_cast<seconds>(stop-start).count() << " seconds." << endl;

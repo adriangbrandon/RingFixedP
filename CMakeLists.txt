@@ -41,10 +41,12 @@ else()
     message(STATUS "CPU does NOT support SSE4.2")
 endif()
 
-include_directories(~/include
+# Prefix where the (extended) sdsl-lite is installed: <prefix>/include and <prefix>/lib (default: home directory)
+set(SDSL_PREFIX "$ENV{HOME}" CACHE PATH "Installation prefix of sdsl-lite")
+include_directories(${SDSL_PREFIX}/include
                     ${CMAKE_HOME_DIRECTORY}/include)
 
-link_directories(~/lib)
+link_directories(${SDSL_PREFIX}/lib)
 
 
 add_executable(build-index src/build-index.cpp)
@@ -52,3 +54,24 @@ target_link_libraries(build-index sdsl divsufsort divsufsort64)
 
 add_executable(query-index src/query-index.cpp)
 target_link_libraries(query-index sdsl divsufsort divsufsort64)
+
+# Same as query-index, also reporting the number of VEO weight computations and the time spent in them
+add_executable(query-index-stats src/query-index.cpp)
+target_compile_definitions(query-index-stats PRIVATE VEO_STATS)
+target_link_libraries(query-index-stats sdsl divsufsort divsufsort64)
+
+add_executable(test-estimators tests/test-estimators.cpp)
+target_link_libraries(test-estimators sdsl divsufsort divsufsort64)
+
+# Variants with plain bitvectors in the wavelet matrices (their indexes are not compatible with the default ones)
+add_executable(build-index-plain src/build-index.cpp)
+target_compile_definitions(build-index-plain PRIVATE RING_PLAIN_BV)
+target_link_libraries(build-index-plain sdsl divsufsort divsufsort64)
+
+add_executable(query-index-plain src/query-index.cpp)
+target_compile_definitions(query-index-plain PRIVATE RING_PLAIN_BV)
+target_link_libraries(query-index-plain sdsl divsufsort divsufsort64)
+
+add_executable(query-index-plain-stats src/query-index.cpp)
+target_compile_definitions(query-index-plain-stats PRIVATE RING_PLAIN_BV VEO_STATS)
+target_link_libraries(query-index-plain-stats sdsl divsufsort divsufsort64)

@@ -121,95 +121,86 @@ ring::triple_pattern get_triple(string & s, std::unordered_map<std::string, uint
 }
 
 
+typedef ring::ring_fixed_p ring_type;
+typedef ring::ltj_iterator<ring_type, uint8_t, uint64_t> iter_type;
+
+template<class veo_type>
+void run_queries(ring_type &graph, vector<string> &queries, const uint64_t limit, const uint64_t timeout) {
+
+    typedef ring::ltj_algorithm<ring_type, uint8_t, uint64_t, veo_type> algorithm_type;
+    typedef std::vector<typename algorithm_type::tuple_type> results_type;
+
+    high_resolution_clock::time_point start, stop;
+    uint64_t nQ = 0;
+    for (string& query_string : queries) {
+
+        std::unordered_map<std::string, uint8_t> hash_table_vars;
+        std::vector<ring::triple_pattern> query;
+        vector<string> tokens_query = tokenizer(query_string, '.');
+        for (string& token : tokens_query) {
+            auto triple_pattern = get_triple(token, hash_table_vars);
+            query.push_back(triple_pattern);
+        }
+
+        ring::veo::stats::reset();
+        start = high_resolution_clock::now();
+        algorithm_type ltj(&query, &graph);
+        results_type res;
+        ltj.join_opt(res, limit, timeout);
+        stop = high_resolution_clock::now();
+        auto ns = duration_cast<nanoseconds>(stop - start).count();
+
+        cout << nQ << ";" << res.size() << ";" << ns;
+#ifdef VEO_STATS
+        cout << ";" << ring::veo::stats::calls() << ";" << ring::veo::stats::ns();
+#endif
+        cout << endl;
+        nQ++;
+    }
+}
+
+template<uint64_t k>
+bool run_k(const string &veo, ring_type &graph, vector<string> &queries, const uint64_t limit, const uint64_t timeout) {
+    using namespace ring::veo;
+    const string K = std::to_string(k);
+    if (veo == "global-int" + K) run_queries<veo_global<iter_type, estimator_intersect<k, false>>>(graph, queries, limit, timeout);
+    else if (veo == "global-guided" + K) run_queries<veo_global<iter_type, estimator_intersect<k, true>>>(graph, queries, limit, timeout);
+    else if (veo == "adaptive-int" + K) run_queries<veo_adaptive<iter_type, estimator_intersect<k, false>>>(graph, queries, limit, timeout);
+    else if (veo == "adaptive-guided" + K) run_queries<veo_adaptive<iter_type, estimator_intersect<k, true>>>(graph, queries, limit, timeout);
+    else return false;
+    return true;
+}
 
 int main(int argc, char* argv[])
 {
-
-    typedef ring::ring_fixed_p ring_type;
-    //typedef ring::c_ring ring_type;
-
-
-    // Optional third argument: maximum number of results per query (0 = no limit)
+    if (argc < 3) {
+        cerr << "Usage: " << argv[0] << " <index> <queries> [limit=1000 (0: no limit)] [veo=adaptive-guided3] [timeout=600 s]" << endl;
+        cerr << "  veo: global | adaptive | {global,adaptive}-{int,guided}{1,2,3,4}" << endl;
+        cerr << "    global:   order fixed before running LTJ (original RingFixedP order with global);" << endl;
+        cerr << "    adaptive: next variable chosen after each binding" << endl;
+        cerr << "    int<k>:   refined estimator, 2^k equal parts of [0,U];  guided<k>: 2^k quantiles of the smallest interval" << endl;
+        return 1;
+    }
     uint64_t limit = (argc > 3) ? std::stoull(argv[3]) : 1000;
+    string veo = (argc > 4) ? argv[4] : "adaptive-guided3";
+    uint64_t timeout = (argc > 5) ? std::stoull(argv[5]) : 600;
 
-    vector<string> dummy_queries;
-    bool result = get_file_content(argv[2], dummy_queries);
+    vector<string> queries;
+    if (!get_file_content(argv[2], queries)) return 1;
 
     ring_type graph;
-
     cout << " Loading the index..."; fflush(stdout);
     sdsl::load_from_file(graph, string(argv[1]));
-
     cout << endl << " Index loaded " << sdsl::size_in_bytes(graph) << " bytes" << endl;
 
-    std::ifstream ifs;
-    uint64_t nQ = 0;
-
-    high_resolution_clock::time_point start, stop;
-    double total_time = 0.0;
-    duration<double> time_span;
-
-    if(result)
-    {
-
-        int count = 1;
-        for (string& query_string : dummy_queries) {
-
-            //vector<Term*> terms_created;
-            //vector<Triple*> query;
-            std::unordered_map<std::string, uint8_t> hash_table_vars;
-            std::vector<ring::triple_pattern> query;
-            vector<string> tokens_query = tokenizer(query_string, '.');
-            for (string& token : tokens_query) {
-                auto triple_pattern = get_triple(token, hash_table_vars);
-                query.push_back(triple_pattern);
-            }
-
-            // vector<string> gao = get_gao(query);
-            // vector<string> gao = get_gao_min_opt(query, graph);
-            // cout << gao [0] << " - " << gao [1] << " - " << gao[2] << endl;
-
-            start = high_resolution_clock::now();
-            
-            //vector<uint8_t> gao = get_gao_min_gen(query, graph);
-
-            //ring::gao::gao_size<ring_type> m_gao(&query, &graph);
-
-            //ring::ltj_algorithm<ring_type> ltj(&query, &m_gao.gao, &graph);
-            ring::ltj_algorithm<ring_type> ltj(&query, &graph);
-
-            /*
-            cout << "Query Details:" << endl;
-            lf.print_query();
-            lf.print_gao();
-            lf.serialize();
-            cout << "##########" << endl;
-            */
-
-//            typedef std::vector<typename ring::ltj_algorithm<>::tuple_type> results_type;
-            typedef std::vector<typename ring::ltj_algorithm<>::tuple_type> results_type;
-            results_type res;
-
-            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-            ltj.join_opt(res, limit, 600);
-            //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-            stop = high_resolution_clock::now();
-            time_span = duration_cast<microseconds>(stop - start);
-            total_time = time_span.count();
-
-            cout << nQ <<  ";" << res.size() << ";" << (unsigned long long)(total_time*1000000000ULL) << endl;
-            nQ++;
-
-            // cout << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() << std::endl;
-
-            //cout << "RESULTS QUERY " << count << ": " << number_of_results << endl;
-        count += 1;
-        }
-
+    using namespace ring::veo;
+    if (veo == "global") run_queries<veo_global<iter_type, estimator_size>>(graph, queries, limit, timeout);
+    else if (veo == "adaptive") run_queries<veo_adaptive<iter_type, estimator_size>>(graph, queries, limit, timeout);
+    else if (!run_k<1>(veo, graph, queries, limit, timeout) && !run_k<2>(veo, graph, queries, limit, timeout)
+             && !run_k<3>(veo, graph, queries, limit, timeout) && !run_k<4>(veo, graph, queries, limit, timeout)
+) {
+        cerr << "Unknown veo: " << veo << endl;
+        return 1;
     }
-
-	return 0;
+    return 0;
 }
-

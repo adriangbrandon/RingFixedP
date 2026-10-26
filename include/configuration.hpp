@@ -37,6 +37,10 @@ using namespace sdsl;
 using namespace std;
 
 typedef std::tuple<uint32_t, uint32_t, uint32_t> spo_triple;
-typedef sdsl::wm_int<rrr_vector<15>> table_column_type;
+#ifdef RING_PLAIN_BV
+typedef sdsl::wm_int<bit_vector> table_column_type;      // plain bitvectors: larger and faster
+#else
+typedef sdsl::wm_int<rrr_vector<15>> table_column_type;  // compressed bitvectors (default)
+#endif
 
 #endif

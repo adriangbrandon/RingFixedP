@@ -68,6 +68,7 @@ namespace ring {
             m_is_empty = o.m_is_empty;
         }
 
+    public:
         inline bool is_variable_subject(var_type var) {
             return m_ptr_triple_pattern->term_s.is_variable && var == m_ptr_triple_pattern->term_s.value;
         }

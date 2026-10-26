@@ -1,0 +1,9 @@
+index,veo,total_ms,weight_computations,weight_ms
+rrr,adaptive,42400.6,1010444,1035.4
+rrr,adaptive-int1,45761.4,839653,5315.8
+rrr,adaptive-int3,39919.0,646367,9432.0
+rrr,adaptive-guided3,31900.6,362105,10730.1
+plain,adaptive,21796.7,1010444,1095.8
+plain,adaptive-int1,21042.0,839653,2057.3
+plain,adaptive-int3,17709.0,646367,3314.8
+plain,adaptive-guided3,12042.4,362105,2969.0

@@ -80,7 +80,7 @@ namespace ring {
             for (uint64_t i = 0; i < D.size(); i++)
                 P_aux[std::get<1>(D[i])].push_back(std::pair<uint64_t, uint64_t>(std::get<0>(D[i]), std::get<2>(D[i])));
 
-            D.clear();
+            std::vector<spo_triple>().swap(D); // frees the memory of D
 
             // assumes enumeration of m_p_rings starts from 1
             m_p_rings.push_back(sub_ring()); // dummy subring at position 0
@@ -151,6 +151,26 @@ namespace ring {
         // Number of triples in the positions of I_s (C_s) whose values lie in I_o (C_o)
         uint64_t count_points(bwt_interval &I_s, bwt_interval &I_o) {
             return m_p_rings[I_s.get_p_value()].count_points(I_s.left(), I_s.right(), I_o.left(), I_o.right());
+        }
+
+        // Number of triples in I (an interval of C_s) whose subject is smaller than v
+        uint64_t count_S_lt(bwt_interval &I, uint64_t v) {
+            return m_p_rings[I.get_p_value()].count_S_lt(I.left(), I.right(), v);
+        }
+
+        // Number of triples in I (an interval of C_o) whose object is smaller than v
+        uint64_t count_O_lt(bwt_interval &I, uint64_t v) {
+            return m_p_rings[I.get_p_value()].count_O_lt(I.left(), I.right(), v);
+        }
+
+        // Subject of the q-th triple (0-based, in subject order) in I (an interval of C_s)
+        uint64_t kth_S(bwt_interval &I, uint64_t q) {
+            return m_p_rings[I.get_p_value()].kth_S(I.left(), I.right(), q);
+        }
+
+        // Object of the q-th triple (0-based, in object order) in I (an interval of C_o)
+        uint64_t kth_O(bwt_interval &I, uint64_t q) {
+            return m_p_rings[I.get_p_value()].kth_O(I.left(), I.right(), q);
         }
 
 
